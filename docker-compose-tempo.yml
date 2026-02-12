@@ -1,0 +1,105 @@
+version: '3.8'
+services:
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - ./tempo/data:/var/tempo
+    ports:
+      - "3200:3200"  # Tempo query API
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+  # Service 2 OpenTelemetry-instrumented FastAPI application
+  otel_service2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tracing-otel-service2:latest
+    container_name: otel_service2
+    depends_on:
+      - tempo
+    environment:
+      - OTEL_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=tempo:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_SERVICE_NAME=otel_service2
+    command: ["uvicorn", "otel_service2.main:app", "--host", "0.0.0.0", "--port", "9001"]
+    ports:
+      - "9001:9001"
+  # Service 1 OpenTelemetry-instrumented FastAPI application
+  otel_service1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tracing-otel-service1:latest
+    container_name: otel_service1
+    depends_on:
+      - otel_service2
+      - tempo
+    environment:
+      - OTEL_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=tempo:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_SERVICE_NAME=otel_service1
+    command: ["uvicorn", "otel_service1.main:app", "--host", "0.0.0.0", "--port", "9000"]
+    ports:
+      - "9000:9000"
+  # Service 2 structured logs FastAPI application
+  service2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tracing-service2:latest
+    container_name: service2
+    command: ["uvicorn", "service2.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "8001:8001"
+  # Service 1 structured logs FastAPI application
+  service1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tracing-service1:latest
+    container_name: service1
+    depends_on:
+      - service2
+    environment:
+      - SERVICE2_URL=http://service2:8001/process
+    command: ["uvicorn", "service1.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+  # loki for log aggregation
+  loki:
+    image: grafana/loki:2.8.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+  # promtail for log collection
+  promtail:
+    image: grafana/promtail:2.8.2
+    container_name: promtail
+    volumes:
+      - ./promtail/config.yaml:/etc/promtail/config.yaml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - loki
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:9.5.0
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana-tempo/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana-tempo/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+      - tempo
