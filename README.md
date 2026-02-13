@@ -185,6 +185,15 @@ curl -X POST http://localhost:9000/call \
   -d '{"name":"Tiz"}'
 ```
 
+or run the script:
+
+```bash
+# ensure that the file has execution permissions
+chmod +x run_calls.sh 
+
+./run_calls.sh [mins]  # mins: duration in minutes (default: 10)
+```
+
 Stop and clean up:
 
 ```bash
