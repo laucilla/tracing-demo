@@ -2,6 +2,7 @@
 
 A comprehensive demo workspace showcasing distributed tracing and structured logging in microservices architecture. Features two pairs of FastAPI services: one demonstrating request ID propagation with structured JSON logging, and another using OpenTelemetry for distributed tracing with Tempo, Loki, and Grafana observability stack.
 
+
 ## Project Structure
 
 ### Core Services (Structured Logging)
@@ -350,11 +351,11 @@ Search traces by:
 - Duration ranges
 - Custom span attributes
 
-### Correlation Workflow
 
-1. **Find a request in logs** — Query Loki for specific request ID or error
-2. **Extract trace ID** — Logs from OTel services contain `trace_id` field
-3. **View full trace** — Jump to Tempo using trace ID to see complete request flow
-4. **Analyze spans** — Examine timing, errors, and service dependencies
+## Dashboard screenshots
 
-The pre-configured dashboard demonstrates this workflow with linked queries.S
+![Grafana dashboard 1](img/grafana_dashboard_tracing_demo_1.png)
+![Grafana dashboard 2](img/grafana_dashboard_tracing_demo_2.png)
+![Grafana dashboard 3](img/grafana_dashboard_tracing_demo_3.png)
+![Grafana dashboard 4](img/grafana_dashboard_tracing_demo_4.png)
+![Grafana dashboard 5](img/grafana_dashboard_tracing_demo_5.png)
